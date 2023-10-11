@@ -24,9 +24,10 @@ def demo(opt):
   detector = Detector(opt)
 
   if opt.demo == 'webcam' or \
-    opt.demo[opt.demo.rfind('.') + 1:].lower() in video_ext:
+    opt.demo.rsplit('.', 1)[1].lower() in video_ext:
     is_video = True
     # demo on video stream
+    print(opt.demo, os.path.isfile(opt.demo))
     cam = cv2.VideoCapture(0 if opt.demo == 'webcam' else opt.demo)
   else:
     is_video = False
@@ -43,13 +44,14 @@ def demo(opt):
 
   # Initialize output video
   out = None
-  out_name = opt.demo[opt.demo.rfind('/') + 1:]
+  out_name = opt.demo[opt.demo.rfind('/') + 1:][:-4]
   print('out_name', out_name)
   if opt.save_video:
     # fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    fourcc = cv2.VideoWriter_fourcc(*'H264')
+    # fourcc = cv2.VideoWriter_fourcc(*'H264')
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter('../results/{}.mp4'.format(
-      opt.exp_id + '_' + out_name),fourcc, opt.save_framerate, (
+      opt.exp_id + '_' + out_name), fourcc, opt.save_framerate, (
         opt.video_w, opt.video_h))
   
   if opt.debug < 5:
@@ -58,51 +60,52 @@ def demo(opt):
   results = {}
 
   while True:
-      if is_video:
-        _, img = cam.read()
-        if img is None:
-          save_and_exit(opt, out, results, out_name)
-      else:
-        if cnt < len(image_names):
-          img = cv2.imread(image_names[cnt])
-        else:
-          save_and_exit(opt, out, results, out_name)
-      cnt += 1
-
-      # resize the original video for saving video results
-      if opt.resize_video:
-        img = cv2.resize(img, (opt.video_w, opt.video_h))
-
-      # skip the first X frames of the video
-      if cnt < opt.skip_first:
-        continue
-      
-      cv2.imshow('input', img)
-
-      # track or detect the image.
-      ret = detector.run(img)
-
-      # log run time
-      time_str = 'frame {} |'.format(cnt)
-      for stat in time_stats:
-        time_str = time_str + '{} {:.3f}s |'.format(stat, ret[stat])
-      print(time_str)
-
-      # results[cnt] is a list of dicts:
-      #  [{'bbox': [x1, y1, x2, y2], 'tracking_id': id, 'category_id': c, ...}]
-      results[cnt] = ret['results']
-
-      # save debug image to video
-      if opt.save_video:
-        out.write(ret['generic'])
-        if not is_video:
-          cv2.imwrite('../results/demo{}.jpg'.format(cnt), ret['generic'])
-      
-      # esc to quit and finish saving video
-      if cv2.waitKey(1) == 27:
+    if is_video:
+      _, img = cam.read()
+      if img is None:
         save_and_exit(opt, out, results, out_name)
-        return 
-  save_and_exit(opt, out, results)
+    else:
+      if cnt < len(image_names):
+        img = cv2.imread(image_names[cnt])
+      else:
+        save_and_exit(opt, out, results, out_name)
+    cnt += 1
+
+    # resize the original video for saving video results
+    if opt.resize_video:
+      img = cv2.resize(img, (opt.video_w, opt.video_h))
+
+    # skip the first X frames of the video
+    if cnt < opt.skip_first:
+      continue
+    
+    # cv2.imshow('input', img)
+
+    # track or detect the image.
+    ret = detector.run(img)
+
+    # log run time
+    time_str = 'frame {} |'.format(cnt)
+    for stat in time_stats:
+      time_str = time_str + '{} {:.3f}s |'.format(stat, ret[stat])
+    print(time_str)
+
+    # results[cnt] is a list of dicts:
+    #  [{'bbox': [x1, y1, x2, y2], 'tracking_id': id, 'category_id': c, ...}]
+    results[cnt] = ret['results']
+
+    # save debug image to video
+    if opt.save_video:
+      out.write(ret['generic'])
+      if not is_video:
+        cv2.imwrite('../results/demo{}.jpg'.format(cnt), ret['generic'])
+    
+    # # esc to quit and finish saving video
+    # if cv2.waitKey(1) == 27:
+    #   save_and_exit(opt, out, results, out_name)
+    #   return 
+  
+  # save_and_exit(opt, out, results, out_name)
 
 
 def save_and_exit(opt, out=None, results=None, out_name=''):
@@ -111,6 +114,7 @@ def save_and_exit(opt, out=None, results=None, out_name=''):
     print('saving results to', save_dir)
     json.dump(_to_list(copy.deepcopy(results)), 
               open(save_dir, 'w'))
+  cv2.destroyAllWindows()
   if opt.save_video and out is not None:
     out.release()
   sys.exit(0)

@@ -39,6 +39,44 @@ def load_model(model, model_path, opt, optimizer=None):
   for k in state_dict_:
     if k.startswith('module') and not k.startswith('module_list'):
       state_dict[k[7:]] = state_dict_[k]
+    # adapt for DLA from MMCV
+    elif k in [
+      'dla_up.ida_0.proj_1.conv.conv_offset_mask.weight',
+      'dla_up.ida_0.proj_1.conv.conv_offset_mask.bias',
+      'dla_up.ida_0.node_1.conv.conv_offset_mask.weight',
+      'dla_up.ida_0.node_1.conv.conv_offset_mask.bias',
+      'dla_up.ida_1.proj_1.conv.conv_offset_mask.weight',
+      'dla_up.ida_1.proj_1.conv.conv_offset_mask.bias',
+      'dla_up.ida_1.node_1.conv.conv_offset_mask.weight',
+      'dla_up.ida_1.node_1.conv.conv_offset_mask.bias',
+      'dla_up.ida_1.proj_2.conv.conv_offset_mask.weight',
+      'dla_up.ida_1.proj_2.conv.conv_offset_mask.bias',
+      'dla_up.ida_1.node_2.conv.conv_offset_mask.weight',
+      'dla_up.ida_1.node_2.conv.conv_offset_mask.bias',
+      'dla_up.ida_2.proj_1.conv.conv_offset_mask.weight',
+      'dla_up.ida_2.proj_1.conv.conv_offset_mask.bias',
+      'dla_up.ida_2.node_1.conv.conv_offset_mask.weight',
+      'dla_up.ida_2.node_1.conv.conv_offset_mask.bias',
+      'dla_up.ida_2.proj_2.conv.conv_offset_mask.weight',
+      'dla_up.ida_2.proj_2.conv.conv_offset_mask.bias',
+      'dla_up.ida_2.node_2.conv.conv_offset_mask.weight',
+      'dla_up.ida_2.node_2.conv.conv_offset_mask.bias',
+      'dla_up.ida_2.proj_3.conv.conv_offset_mask.weight',
+      'dla_up.ida_2.proj_3.conv.conv_offset_mask.bias',
+      'dla_up.ida_2.node_3.conv.conv_offset_mask.weight',
+      'dla_up.ida_2.node_3.conv.conv_offset_mask.bias',
+      'ida_up.proj_1.conv.conv_offset_mask.weight',
+      'ida_up.proj_1.conv.conv_offset_mask.bias',
+      'ida_up.node_1.conv.conv_offset_mask.weight',
+      'ida_up.node_1.conv.conv_offset_mask.bias',
+      'ida_up.proj_2.conv.conv_offset_mask.weight',
+      'ida_up.proj_2.conv.conv_offset_mask.bias',
+      'ida_up.node_2.conv.conv_offset_mask.weight',
+      'ida_up.node_2.conv.conv_offset_mask.bias',
+    ]:
+      splits = k.rsplit('.', 1)
+      k_ = splits[0][:-5] + '.' + splits[1]
+      state_dict[k_] = state_dict_[k]
     else:
       state_dict[k] = state_dict_[k]
   model_state_dict = model.state_dict()

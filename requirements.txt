@@ -1,12 +1,12 @@
-opencv-python
-Cython
+# opencv-python
+# Cython
 numba
 progress
-matplotlib
-easydict
-scipy
+# matplotlib
+# easydict
+# scipy
 pyquaternion
-nuscenes-devkit
-pyyaml
-motmetrics
-scikit-learn==0.22.2
+# nuscenes-devkit
+# pyyaml
+# motmetrics
+# scikit-learn==0.22.2

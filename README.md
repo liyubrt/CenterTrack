@@ -62,6 +62,8 @@ All models and details are available in our [Model zoo](readme/MODEL_ZOO.md).
 
 Please refer to [INSTALL.md](readme/INSTALL.md) for installation instructions.
 
+Useful [link](https://github.com/tteepe/DCNv2) to install DCNv2 with MMCV.
+
 ## Use CenterTrack
 
 We support demo for videos, webcam, and image folders. 
