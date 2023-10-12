@@ -305,18 +305,18 @@ class DLA(nn.Module):
             inplanes = planes
         return nn.Sequential(*modules)
 
-    def forward(self, x, pre_img=None, pre_hm=None):
+    def forward(self, x, pre_img=None, pre_hm=None):  # x: 1x3x512x512, pre_img: 1x3x512x512, pre_hm: None
         y = []
-        x = self.base_layer(x)
+        x = self.base_layer(x)  # 1x16x512x512
         if pre_img is not None:
-            x = x + self.pre_img_layer(pre_img)
-        if pre_hm is not None:
+            x = x + self.pre_img_layer(pre_img)  # 1x16x512x512
+        if pre_hm is not None:  # no enter
             x = x + self.pre_hm_layer(pre_hm)
         for i in range(6):
             x = getattr(self, 'level{}'.format(i))(x)
             y.append(x)
         
-        return y
+        return y  # 1x16x512x512, 1x32x256x256, 1x64x128x128, 1x128x64x64, 1x256x32x32, 1x512x16x16
 
     def load_pretrained_model(self, data='imagenet', name='dla34', hash='ba72cf86'):
         # fc = self.fc
@@ -600,9 +600,9 @@ class DLASeg(BaseModel):
             heads, head_convs, 1, 64 if num_layers == 34 else 128, opt=opt)
         down_ratio=4
         self.opt = opt
-        self.node_type = DLA_NODE[opt.dla_node]
+        self.node_type = DLA_NODE[opt.dla_node]  # opt.dla_node: dcn
         print('Using node type:', self.node_type)
-        self.first_level = int(np.log2(down_ratio))
+        self.first_level = int(np.log2(down_ratio))  # 2
         self.last_level = 5
         self.base = globals()['dla{}'.format(num_layers)](
             pretrained=(opt.load_model == ''), opt=opt)
@@ -631,13 +631,13 @@ class DLASeg(BaseModel):
 
         return [y[-1]]
 
-    def imgpre2feats(self, x, pre_img=None, pre_hm=None):
-        x = self.base(x, pre_img, pre_hm)
-        x = self.dla_up(x)
+    def imgpre2feats(self, x, pre_img=None, pre_hm=None):  # x: 1x3x512x512, pre_img: 1x3x512x512, pre_hm: None
+        x = self.base(x, pre_img, pre_hm)  # 1x16x512x512, 1x32x256x256, 1x64x128x128, 1x128x64x64, 1x256x32x32, 1x512x16x16
+        x = self.dla_up(x)  # 1x16x512x512, 1x32x256x256, 1x64x128x128, 1x64x128x128, 1x64x128x128, 1x64x128x128
 
         y = []
         for i in range(self.last_level - self.first_level):
             y.append(x[i].clone())
-        self.ida_up(y, 0, len(y))
+        self.ida_up(y, 0, len(y))  # y: 1x64x128x128, 1x64x128x128, 1x64x128x128
 
-        return [y[-1]]
+        return [y[-1]]  # 1x64x128x128

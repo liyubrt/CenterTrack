@@ -52,7 +52,7 @@ class Detector(object):
     self.debugger = Debugger(opt=opt, dataset=self.trained_dataset)
 
 
-  def run(self, image_or_path_or_tensor, meta={}):
+  def run(self, image_or_path_or_tensor, meta={}):  # image_or_path_or_tensor: 512x1024x3
     load_time, pre_time, net_time, dec_time, post_time = 0, 0, 0, 0, 0
     merge_time, track_time, tot_time, display_time = 0, 0, 0, 0
     self.debugger.clear()
@@ -61,7 +61,7 @@ class Detector(object):
     # read image
     pre_processed = False
     if isinstance(image_or_path_or_tensor, np.ndarray):
-      image = image_or_path_or_tensor
+      image = image_or_path_or_tensor  # 512x1024x3
     elif type(image_or_path_or_tensor) == type (''): 
       image = cv2.imread(image_or_path_or_tensor)
     else:
@@ -77,7 +77,7 @@ class Detector(object):
     # for multi-scale testing
     for scale in self.opt.test_scales:
       scale_start_time = time.time()
-      if not pre_processed:
+      if not pre_processed:  # entered
         # not prefetch testing or demo
         images, meta = self.pre_process(image, scale, meta)
       else:
@@ -96,12 +96,12 @@ class Detector(object):
       pre_hms, pre_inds = None, None
       if self.opt.tracking:
         # initialize the first frame
-        if self.pre_images is None:
+        if self.pre_images is None:  # no enter
           print('Initialize tracking!')
           self.pre_images = images
           self.tracker.init_track(
             meta['pre_dets'] if 'pre_dets' in meta else [])
-        if self.opt.pre_hm:
+        if self.opt.pre_hm:  # no enter
           # render input heatmap from tracker status
           # pre_inds is not used in the current version.
           # We used pre_inds for learning an offset from previous image to
@@ -191,10 +191,10 @@ class Detector(object):
         inp_width = self.opt.fix_short
       c = np.array([width / 2, height / 2], dtype=np.float32)
       s = np.array([width, height], dtype=np.float32)
-    elif self.opt.fix_res:
+    elif self.opt.fix_res:  # entered
       inp_height, inp_width = self.opt.input_h, self.opt.input_w
-      c = np.array([new_width / 2., new_height / 2.], dtype=np.float32)
-      s = max(height, width) * 1.0
+      c = np.array([new_width / 2., new_height / 2.], dtype=np.float32)  # [512, 256]
+      s = max(height, width) * 1.0  # 1024
       # s = np.array([inp_width, inp_height], dtype=np.float32)
     else:
       inp_height = (new_height | self.opt.pad) + 1
@@ -211,18 +211,18 @@ class Detector(object):
       and tracking.
     '''
     resized_image, c, s, inp_width, inp_height, height, width = \
-      self._transform_scale(image)
-    trans_input = get_affine_transform(c, s, 0, [inp_width, inp_height])
-    out_height =  inp_height // self.opt.down_ratio
-    out_width =  inp_width // self.opt.down_ratio
-    trans_output = get_affine_transform(c, s, 0, [out_width, out_height])
+      self._transform_scale(image)  # 512x1024x3, [512,256], 1024, 512, 512, 512, 1024
+    trans_input = get_affine_transform(c, s, 0, [inp_width, inp_height])  # [[  0.5,  -0. ,   0. ], [  0. ,   0.5, 128. ]]
+    out_height =  inp_height // self.opt.down_ratio  # 128
+    out_width =  inp_width // self.opt.down_ratio  # 128
+    trans_output = get_affine_transform(c, s, 0, [out_width, out_height])  # [[ 0.125, -0.   ,  0.   ], [ 0.   ,  0.125, 32.   ]]
 
     inp_image = cv2.warpAffine(
       resized_image, trans_input, (inp_width, inp_height),
-      flags=cv2.INTER_LINEAR)
-    inp_image = ((inp_image / 255. - self.mean) / self.std).astype(np.float32)
+      flags=cv2.INTER_LINEAR)  # 512x512x3, max 255
+    inp_image = ((inp_image / 255. - self.mean) / self.std).astype(np.float32)  # 512x512x3, max 2.05
 
-    images = inp_image.transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)
+    images = inp_image.transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)  # 1x3x512x512
     if self.opt.flip_test:
       images = np.concatenate((images, images[:, :, :, ::-1]), axis=0)
     images = torch.from_numpy(images)
@@ -334,13 +334,13 @@ class Detector(object):
 
 
   def process(self, images, pre_images=None, pre_hms=None,
-    pre_inds=None, return_time=False):
+    pre_inds=None, return_time=False):  # images: 1x3x512x512, pre_images: 1x3x512x512, pre_hms: None
     with torch.no_grad():
       torch.cuda.synchronize()
-      output = self.model(images, pre_images, pre_hms)[-1]
-      output = self._sigmoid_output(output)
+      output = self.model(images, pre_images, pre_hms)[-1]  # {'hm': 1x80x128x128, 'reg': 1x2x128x128, 'wh': 1x2x128x128, 'tracking': 1x2x128x128}
+      output = self._sigmoid_output(output)  # sigmoid on hm
       output.update({'pre_inds': pre_inds})
-      if self.opt.flip_test:
+      if self.opt.flip_test:  # no enter
         output = self._flip_output(output)
       torch.cuda.synchronize()
       forward_time = time.time()

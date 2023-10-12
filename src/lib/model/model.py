@@ -21,11 +21,11 @@ _network_factory = {
   'generic': GenericNetwork
 }
 
-def create_model(arch, head, head_conv, opt=None):
-  num_layers = int(arch[arch.find('_') + 1:]) if '_' in arch else 0
-  arch = arch[:arch.find('_')] if '_' in arch else arch
-  model_class = _network_factory[arch]
-  model = model_class(num_layers, heads=head, head_convs=head_conv, opt=opt)
+def create_model(arch, head, head_conv, opt=None):  # head {'hm': 80, 'reg': 2, 'wh': 2, 'tracking': 2}, head_conv {'hm': [256], 'reg': [256], 'wh': [256], 'tracking': [256]}
+  num_layers = int(arch[arch.find('_') + 1:]) if '_' in arch else 0  # 34
+  arch = arch[:arch.find('_')] if '_' in arch else arch  # dla
+  model_class = _network_factory[arch]  # DLASeg
+  model = model_class(num_layers, heads=head, head_convs=head_conv, opt=opt)  # DLASeg
   return model
 
 def load_model(model, model_path, opt, optimizer=None):

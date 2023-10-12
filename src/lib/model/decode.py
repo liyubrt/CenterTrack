@@ -84,27 +84,27 @@ def generic_decode(output, K=100, opt=None):
   if not ('hm' in output):
     return {}
 
-  if opt.zero_tracking:
+  if opt.zero_tracking:  # no enter
     output['tracking'] *= 0
   
-  heat = output['hm']
+  heat = output['hm']  # 1x80x128x128
   batch, cat, height, width = heat.size()
 
-  heat = _nms(heat)
-  scores, inds, clses, ys0, xs0 = _topk(heat, K=K)
+  heat = _nms(heat)  # 1x80x128x128
+  scores, inds, clses, ys0, xs0 = _topk(heat, K=K)  # 1xK, 1xK, 1xK, 1xK, 1xK, batch=1, K=100
 
   clses  = clses.view(batch, K)
   scores = scores.view(batch, K)
   bboxes = None
-  cts = torch.cat([xs0.unsqueeze(2), ys0.unsqueeze(2)], dim=2)
+  cts = torch.cat([xs0.unsqueeze(2), ys0.unsqueeze(2)], dim=2)  # 1xKx2
   ret = {'scores': scores, 'clses': clses.float(), 
          'xs': xs0, 'ys': ys0, 'cts': cts}
   if 'reg' in output:
-    reg = output['reg']
-    reg = _tranpose_and_gather_feat(reg, inds)
+    reg = output['reg']  # 1x2x128x128
+    reg = _tranpose_and_gather_feat(reg, inds)  # 1xKx2
     reg = reg.view(batch, K, 2)
-    xs = xs0.view(batch, K, 1) + reg[:, :, 0:1]
-    ys = ys0.view(batch, K, 1) + reg[:, :, 1:2]
+    xs = xs0.view(batch, K, 1) + reg[:, :, 0:1]  # 1xKx1
+    ys = ys0.view(batch, K, 1) + reg[:, :, 1:2]  # 1xKx1
   else:
     xs = xs0.view(batch, K, 1) + 0.5
     ys = ys0.view(batch, K, 1) + 0.5
@@ -128,7 +128,7 @@ def generic_decode(output, K=100, opt=None):
     ret['bboxes'] = bboxes
     # print('ret bbox', ret['bboxes'])
  
-  if 'ltrb' in output:
+  if 'ltrb' in output:  # no enter
     ltrb = output['ltrb']
     ltrb = _tranpose_and_gather_feat(ltrb, inds) # B x K x 4
     ltrb = ltrb.view(batch, K, 4)
@@ -147,7 +147,7 @@ def generic_decode(output, K=100, opt=None):
       ret[head] = _tranpose_and_gather_feat(
         output[head], inds).view(batch, K, -1)
 
-  if 'ltrb_amodal' in output:
+  if 'ltrb_amodal' in output:  # no enter
     ltrb_amodal = output['ltrb_amodal']
     ltrb_amodal = _tranpose_and_gather_feat(ltrb_amodal, inds) # B x K x 4
     ltrb_amodal = ltrb_amodal.view(batch, K, 4)
@@ -158,7 +158,7 @@ def generic_decode(output, K=100, opt=None):
     ret['bboxes_amodal'] = bboxes_amodal
     ret['bboxes'] = bboxes_amodal
 
-  if 'hps' in output:
+  if 'hps' in output:  # no enter
     kps = output['hps']
     num_joints = kps.shape[1] // 2
     kps = _tranpose_and_gather_feat(kps, inds)
@@ -170,7 +170,7 @@ def generic_decode(output, K=100, opt=None):
     ret['hps'] = kps
     ret['kps_score'] = kps_score
 
-  if 'pre_inds' in output and output['pre_inds'] is not None:
+  if 'pre_inds' in output and output['pre_inds'] is not None:  # no enter
     pre_inds = output['pre_inds'] # B x pre_K
     pre_K = pre_inds.shape[1]
     pre_ys = (pre_inds / width).int().float()
