@@ -39,12 +39,14 @@ def demo(opt):
           ext = file_name[file_name.rfind('.') + 1:].lower()
           if ext in image_ext:
               image_names.append(os.path.join(opt.demo, file_name))
+      image_result_dir = os.path.join(f'../results/{os.path.basename(opt.demo)}')
+      os.makedirs(image_result_dir, exist_ok=True)
     else:
       image_names = [opt.demo]
 
   # Initialize output video
   out = None
-  out_name = opt.demo[opt.demo.rfind('/') + 1:][:-4]
+  out_name = os.path.basename(opt.demo).rsplit('.', 1)[0] if os.path.isfile(opt.demo) else os.path.basename(opt.demo)
   print('out_name', out_name)
   if opt.save_video:
     # fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -98,7 +100,8 @@ def demo(opt):
     if opt.save_video:
       out.write(ret['generic'])
       if not is_video:
-        cv2.imwrite('../results/demo{}.jpg'.format(cnt), ret['generic'])
+        image_result_path = os.path.join(image_result_dir, os.path.basename(image_names[cnt-1]))
+        cv2.imwrite(image_result_path, ret['generic'])
     
     # # esc to quit and finish saving video
     # if cv2.waitKey(1) == 27:

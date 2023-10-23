@@ -131,6 +131,8 @@ class GenericDataset(data.Dataset):
     num_objs = min(len(anns), self.max_objs)
     for k in range(num_objs):
       ann = anns[k]
+      if not ann['category_id'] in self.cat_ids:
+        continue
       cls_id = int(self.cat_ids[ann['category_id']])
       if cls_id > self.opt.num_classes or cls_id <= -999:
         continue
@@ -210,11 +212,13 @@ class GenericDataset(data.Dataset):
     pre_hm = np.zeros((1, hm_h, hm_w), dtype=np.float32) if reutrn_hm else None
     pre_cts, track_ids = [], []
     for ann in anns:
+      if not ann['category_id'] in self.cat_ids:
+        continue
       cls_id = int(self.cat_ids[ann['category_id']])
       if cls_id > self.opt.num_classes or cls_id <= -99 or \
          ('iscrowd' in ann and ann['iscrowd'] > 0):
         continue
-      bbox = self._coco_box_to_bbox(ann['bbox'])
+      bbox = self._coco_box_to_bbox(ann['bbox'])  # XYWH to XYXY
       bbox[:2] = affine_transform(bbox[:2], trans)
       bbox[2:] = affine_transform(bbox[2:], trans)
       bbox[[0, 2]] = np.clip(bbox[[0, 2]], 0, hm_w - 1)

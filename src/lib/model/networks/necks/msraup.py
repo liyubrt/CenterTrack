@@ -17,10 +17,13 @@ import torch
 import torch.nn as nn
 
 try:
-  from ..DCNv2.dcn_v2 import DCN
+    # from .DCNv2.dcn_v2 import DCN
+    import mmcv
+    # from mmcv.ops.deform_conv import DeformConv2d as DCN
+    from mmcv.ops.modulated_deform_conv import ModulatedDeformConv2dPack as DCN
 except:
-  print('import DCN failed')
-  DCN = None
+    print('import DCN failed')
+    DCN = None
 
 
 BN_MOMENTUM = 0.1
