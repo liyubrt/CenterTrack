@@ -93,9 +93,9 @@ class ModleWithLoss(torch.nn.Module):
     self.loss = loss
   
   def forward(self, batch):
-    pre_img = batch['pre_img'] if 'pre_img' in batch else None
-    pre_hm = batch['pre_hm'] if 'pre_hm' in batch else None
-    outputs = self.model(batch['image'], pre_img, pre_hm)
+    pre_img = batch['pre_img'] if 'pre_img' in batch else None  # Nx3x512x1024
+    pre_hm = batch['pre_hm'] if 'pre_hm' in batch else None  # Nx1x512x1024
+    outputs = self.model(batch['image'], pre_img, pre_hm)  # [{'hm': Nx80x128x256, 'reg': Nx2x128x256, 'wh': Nx2x128x256, 'tracking': Nx2x128x256, 'ltrb_amodal': Nx4x128x256}]
     loss, loss_stats = self.loss(outputs, batch)
     return outputs[-1], loss, loss_stats
 

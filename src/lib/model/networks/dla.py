@@ -305,18 +305,18 @@ class DLA(nn.Module):
             inplanes = planes
         return nn.Sequential(*modules)
 
-    def forward(self, x, pre_img=None, pre_hm=None):  # x: 1x3x512x512, pre_img: 1x3x512x512, pre_hm: None
+    def forward(self, x, pre_img=None, pre_hm=None):  # x: Nx3x512x1024, pre_img: Nx3x512x1024, pre_hm: Nx1x512x1024
         y = []
-        x = self.base_layer(x)  # 1x16x512x512
+        x = self.base_layer(x)  # Nx16x512x1024
         if pre_img is not None:
-            x = x + self.pre_img_layer(pre_img)  # 1x16x512x512
-        if pre_hm is not None:  # no enter
+            x = x + self.pre_img_layer(pre_img)  # Nx16x512x1024
+        if pre_hm is not None:  # Nx16x512x1024
             x = x + self.pre_hm_layer(pre_hm)
         for i in range(6):
             x = getattr(self, 'level{}'.format(i))(x)
             y.append(x)
         
-        return y  # 1x16x512x512, 1x32x256x256, 1x64x128x128, 1x128x64x64, 1x256x32x32, 1x512x16x16
+        return y  # Nx16x512x1024, Nx32x256x512, Nx64x128x256, Nx128x64x128, Nx256x32x64, Nx512x16x32
 
     def load_pretrained_model(self, data='imagenet', name='dla34', hash='ba72cf86'):
         # fc = self.fc
@@ -631,13 +631,13 @@ class DLASeg(BaseModel):
 
         return [y[-1]]
 
-    def imgpre2feats(self, x, pre_img=None, pre_hm=None):  # x: 1x3x512x512, pre_img: 1x3x512x512, pre_hm: None
-        x = self.base(x, pre_img, pre_hm)  # 1x16x512x512, 1x32x256x256, 1x64x128x128, 1x128x64x64, 1x256x32x32, 1x512x16x16
-        x = self.dla_up(x)  # 1x16x512x512, 1x32x256x256, 1x64x128x128, 1x64x128x128, 1x64x128x128, 1x64x128x128
+    def imgpre2feats(self, x, pre_img=None, pre_hm=None):  # x: Nx3x512x1024, pre_img: Nx3x512x1024, pre_hm: Nx1x512x1024
+        x = self.base(x, pre_img, pre_hm)  # Nx16x512x1024, Nx32x256x512, Nx64x128x256, Nx128x64x128, Nx256x32x64, Nx512x16x32
+        x = self.dla_up(x)  # Nx64x128x256, Nx128x64x128, Nx256x32x64, Nx512x16x32
 
         y = []
         for i in range(self.last_level - self.first_level):
             y.append(x[i].clone())
-        self.ida_up(y, 0, len(y))  # y: 1x64x128x128, 1x64x128x128, 1x64x128x128
+        self.ida_up(y, 0, len(y))  # y: Nx64x128x256, Nx64x128x256, Nx64x128x256
 
-        return [y[-1]]  # 1x64x128x128
+        return [y[-1]]  # Nx64x128x256
