@@ -175,7 +175,7 @@ class BRTDLASeg(BaseModel):
         self.node_type = DLA_NODE[opt.dla_node]  # opt.dla_node: dcn
         print('Using node type:', self.node_type)
         # self.first_level = int(np.log2(down_ratio))  # 2
-        self.first_level = 1
+        self.first_level = 1  # the index in base model outputs, should match 4x downsampled heatmap
         self.last_level = 4  # self.base.channels - 1 ?
         # self.base = globals()['dla{}'.format(num_layers)](
         #     pretrained=(opt.load_model == ''), opt=opt)

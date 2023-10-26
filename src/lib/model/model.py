@@ -31,20 +31,24 @@ def create_model(arch, head, head_conv, opt=None):  # head {'hm': 80, 'reg': 2, 
   return model
 
 def load_model(model, model_path, opt, optimizer=None):
-  start_epoch = 0
-
-  # load tracking weights
-  model_path_tracking = '/home/li.yu/code/CenterTrack/models/coco_tracking.pth'
-  checkpoint = torch.load(model_path_tracking, map_location=lambda storage, loc: storage)
-  print('loaded {}, epoch {}'.format(model_path_tracking, checkpoint['epoch']))
-  state_dict_ = checkpoint['state_dict']
-  # load BRT weights
-  checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
-  print('loaded {}'.format(model_path))
-  state_dict2 = checkpoint['state_dict']
-  state_dict2 = {'base.'+k:v for k,v in state_dict2.items()}
+  if not opt.test:
+    # load tracking weights
+    model_path_tracking = '/home/li.yu/code/CenterTrack/models/coco_tracking.pth'
+    checkpoint = torch.load(model_path_tracking, map_location=lambda storage, loc: storage)
+    print('loaded {}, epoch {}'.format(model_path_tracking, checkpoint['epoch']))
+    state_dict_ = checkpoint['state_dict']
+    # load BRT weights
+    checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
+    print('loaded {}'.format(model_path))
+    state_dict2 = checkpoint['state_dict']
+    state_dict2 = {'base.'+k:v for k,v in state_dict2.items()}
+    state_dict_.update(state_dict2)
+  else:
+    checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
+    print('loaded {}, epoch {}'.format(model_path, checkpoint['epoch']))
+    state_dict_ = checkpoint['state_dict']
   
-  state_dict_.update(state_dict2)
+  start_epoch = 0
   state_dict = {}
    
   # convert data_parallal to model
