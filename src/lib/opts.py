@@ -4,7 +4,9 @@ from __future__ import print_function
 
 import argparse
 import os
+import json
 import sys
+
 
 class opts(object):
   def __init__(self):
@@ -101,6 +103,11 @@ class opts(object):
     self.parser.add_argument('--msra_outchannel', type=int, default=256)
     self.parser.add_argument('--efficient_level', type=int, default=0)
     self.parser.add_argument('--prior_bias', type=float, default=-4.6) # -2.19
+    self.parser.add_argument('--brt_seg_params', type=json.loads, 
+                              default='{"num_classes": 7, "input_dims": 3, \
+                                        "model_params": {"num_block_layers": 2, "widening_factor": 2, \
+                                                        "upsample_mode": "nearest", "bias": true, "activation": "relu",}, \
+                                        "pre_img": true, "pre_hm": true,}')
 
     # input
     self.parser.add_argument('--input_res', type=int, default=-1, 
@@ -114,12 +121,24 @@ class opts(object):
 
     # train
     self.parser.add_argument('--optim', default='adam')
+    self.parser.add_argument('--freeze_encoder', action='store_true')
     self.parser.add_argument('--lr', type=float, default=1.25e-4, 
                              help='learning rate for batch size 32.')
-    self.parser.add_argument('--lr_step', type=str, default='60',
-                             help='drop learning rate by 10.')
-    self.parser.add_argument('--save_point', type=str, default='90',
-                             help='when to save the model to disk.')
+    # self.parser.add_argument('--lr_step', type=str, default='60',
+    #                          help='drop learning rate by 10.')
+    self.parser.add_argument('--lr_scheduler', type=json.loads, default='{"steplr": false, "steplr_step_size": 7, "steplr_gamma": 0.1, \
+                                "cosinelr": false, "cosinelr_T_max": 70, "cosinelr_eta_min": 1e-6}',
+                              help='Specifies the learning rate scheduler and relevant parameters to be used. \
+                                For cosinelr scheduler, it is recommended to set T_max as the total number of epochs.')
+    self.parser.add_argument('--weight_decay', type=float, default=1e-5, 
+                             help='weight decay in optimizer.')
+    self.parser.add_argument('--warm_up', type=int, default=-1,
+                             help='warm up and tune parameters without loaded weights. \
+                               -1 for loading trained weights, 0 for loading pretrained weights without warmup, >0 for warmup followed by full training')
+    # self.parser.add_argument('--save_point', type=str, default='90',
+    #                          help='when to save the model to disk.')
+    self.parser.add_argument('--save_every', type=int, default=10,
+                             help='save checkpoints every few epochs.')
     self.parser.add_argument('--num_epochs', type=int, default=70,
                              help='total training epochs.')
     self.parser.add_argument('--batch_size', type=int, default=32,
@@ -266,8 +285,8 @@ class opts(object):
     opt.gpus_str = opt.gpus
     opt.gpus = [int(gpu) for gpu in opt.gpus.split(',')]
     opt.gpus = [i for i in range(len(opt.gpus))] if opt.gpus[0] >=0 else [-1]
-    opt.lr_step = [int(i) for i in opt.lr_step.split(',')]
-    opt.save_point = [int(i) for i in opt.save_point.split(',')]
+    # opt.lr_step = [int(i) for i in opt.lr_step.split(',')]
+    # opt.save_point = [int(i) for i in opt.save_point.split(',')]
     opt.test_scales = [float(i) for i in opt.test_scales.split(',')]
     opt.save_imgs = [i for i in opt.save_imgs.split(',')] \
       if opt.save_imgs != '' else []
@@ -315,7 +334,7 @@ class opts(object):
       opt.master_batch_size = -1
 
     # log dirs
-    opt.root_dir = os.path.join(os.path.dirname(__file__), '..', '..')
+    opt.root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     opt.data_dir = os.path.join(opt.root_dir, 'data')
     opt.exp_dir = os.path.join(opt.root_dir, 'exp', opt.task)
     opt.save_dir = os.path.join(opt.exp_dir, opt.exp_id)
@@ -377,13 +396,13 @@ class opts(object):
     for head in opt.weights:
       if opt.weights[head] == 0:
         del opt.heads[head]
-    opt.head_conv = {head: [opt.head_conv \
+    opt.head_convs = {head: [opt.head_conv \
       for i in range(opt.num_head_conv if head != 'reg' else 1)] for head in opt.heads}
     
     print('input h w:', opt.input_h, opt.input_w)
     print('heads', opt.heads)
     print('weights', opt.weights)
-    print('head conv', opt.head_conv)
+    print('head convs', opt.head_convs)
 
     return opt
 

@@ -16,16 +16,32 @@ from trainer import Trainer
 
 def get_optimizer(opt, model):
   if opt.optim == 'adam':
-    optimizer = torch.optim.Adam(model.parameters(), opt.lr)
+    optimizer = torch.optim.Adam([{'params': filter(lambda p: p.requires_grad, model.parameters()),'lr': opt.lr}],
+                                  lr=opt.lr,
+                                  weight_decay=opt.weight_decay)
   elif opt.optim == 'adamw':
-    optimizer = torch.optim.AdamW(model.parameters(), opt.lr)
+    optimizer = torch.optim.AdamW([{'params': filter(lambda p: p.requires_grad, model.parameters()),'lr': opt.lr}],
+                                  lr=opt.lr,
+                                  weight_decay=opt.weight_decay)
   elif opt.optim == 'sgd':
-    print('Using SGD')
-    optimizer = torch.optim.SGD(
-      model.parameters(), opt.lr, momentum=0.9, weight_decay=0.0001)
+    optimizer = torch.optim.SGD([{'params': filter(lambda p: p.requires_grad, model.parameters()), 'lr': opt.lr}], 
+                                lr=opt.lr, momentum=0.9, weight_decay=0.0001)
   else:
     assert 0, opt.optim
   return optimizer
+
+def get_scheduler(opt, optimizer):
+  assert not (opt.lr_scheduler["steplr"] and opt.lr_scheduler["cosinelr"]), "only one lr scheduler is allowed"
+  if opt.lr_scheduler["steplr"]:
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 
+                                                step_size=opt.lr_scheduler["steplr_step_size"], 
+                                                gamma=opt.lr_scheduler["steplr_gamma"])
+  if opt.lr_scheduler["cosinelr"]:
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 
+                                                          T_max=opt.lr_scheduler["cosinelr_T_max"], 
+                                                          eta_min=opt.lr_scheduler["cosinelr_eta_min"], 
+                                                          last_epoch=-1)
+  return scheduler
 
 def main(opt):
   torch.manual_seed(opt.seed)
@@ -39,12 +55,12 @@ def main(opt):
   logger = Logger(opt)
 
   print('Creating model...')
-  model = create_model(opt.arch, opt.heads, opt.head_conv, opt=opt)
-  optimizer = get_optimizer(opt, model)
-  start_epoch = 0
+  model = create_model(opt.arch, opt.heads, opt.head_convs, opt=opt)
   if opt.load_model != '':
-    model, optimizer, start_epoch = load_model(
-      model, opt.load_model, opt, optimizer)
+    model = load_model(model, opt.load_model, opt)
+  optimizer = get_optimizer(opt, model)
+  print('Tunable parameters:', sum(p.numel() for p in model.parameters() if p.requires_grad))
+  scheduler = get_scheduler(opt, optimizer)
 
   trainer = Trainer(opt, model, optimizer)
   trainer.set_device(opt.gpus, opt.chunk_sizes, opt.device)
@@ -67,6 +83,7 @@ def main(opt):
   )
 
   print('Starting training...')
+  start_epoch = 0
   for epoch in range(start_epoch + 1, opt.num_epochs + 1):
     mark = epoch if opt.save_all else 'last'
     log_dict_train, _ = trainer.train(epoch, train_loader)
@@ -87,17 +104,33 @@ def main(opt):
     else:
       save_model(os.path.join(opt.save_dir, 'model_last.pth'), 
                  epoch, model, optimizer)
+    if scheduler:
+      logger.write(f'lr {scheduler.get_last_lr()[0]:.6f} | ')
+      scheduler.step()
     logger.write('\n')
-    if epoch in opt.save_point:
+    if epoch % opt.save_every == 0:
       save_model(os.path.join(opt.save_dir, 'model_{}.pth'.format(epoch)), 
                  epoch, model, optimizer)
-    if epoch in opt.lr_step:
-      lr = opt.lr * (0.1 ** (opt.lr_step.index(epoch) + 1))
-      print('Drop LR to', lr)
-      for param_group in optimizer.param_groups:
-          param_group['lr'] = lr
+    # if epoch in opt.lr_step:
+    #   lr = opt.lr * (0.1 ** (opt.lr_step.index(epoch) + 1))
+    #   print('Drop LR to', lr)
+    #   for param_group in optimizer.param_groups:
+    #       param_group['lr'] = lr
   logger.close()
+
 
 if __name__ == '__main__':
   opt = opts().parse()
-  main(opt)
+  if opt.warm_up > 0:
+    # warm up epochs
+    full_num_epochs = opt.num_epochs
+    opt.num_epochs = opt.warm_up
+    main(opt)
+    # full tuning epochs
+    os.rename(os.path.join(opt.save_dir, 'model_last.pth'), os.path.join(opt.save_dir, 'model_last_warmup.pth'))
+    opt.load_model = os.path.join(opt.save_dir, 'model_last_warmup.pth')
+    opt.warm_up = -1
+    opt.num_epochs = full_num_epochs
+    main(opt)
+  else:
+    main(opt)

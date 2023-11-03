@@ -179,20 +179,7 @@ class BRTDLASeg(BaseModel):
         self.last_level = 4  # self.base.channels - 1 ?
         # self.base = globals()['dla{}'.format(num_layers)](
         #     pretrained=(opt.load_model == ''), opt=opt)
-        params = {
-            "num_classes": 7,
-            "input_dims": 3,
-            "model_params": {
-                "num_block_layers": 2,
-                "widening_factor": 2,
-                "upsample_mode": "nearest",
-                "bias": True, 
-                "activation": "relu",
-            },
-            "pre_img": True,
-            "pre_hm": True,
-        }
-        self.base = BrtResnetPyramidLite12(params)
+        self.base = BrtResnetPyramidLite12(opt.brt_seg_params)
 
         channels = self.base.channels
         scales = [2 ** i for i in range(len(channels[self.first_level:]))]

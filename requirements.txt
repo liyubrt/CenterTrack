@@ -6,6 +6,7 @@ progress
 # easydict
 # scipy
 pyquaternion
+pycocotools
 # nuscenes-devkit
 # pyyaml
 # motmetrics
