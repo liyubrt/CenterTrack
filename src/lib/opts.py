@@ -106,8 +106,8 @@ class opts(object):
     self.parser.add_argument('--brt_seg_params', type=json.loads, 
                               default='{"num_classes": 7, "input_dims": 3, \
                                         "model_params": {"num_block_layers": 2, "widening_factor": 2, \
-                                                        "upsample_mode": "nearest", "bias": true, "activation": "relu",}, \
-                                        "pre_img": true, "pre_hm": true,}')
+                                                        "upsample_mode": "nearest", "bias": true, "activation": "relu"}, \
+                                        "pre_img": true, "pre_hm": true}')
 
     # input
     self.parser.add_argument('--input_res', type=int, default=-1, 
