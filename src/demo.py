@@ -39,7 +39,7 @@ def demo(opt):
           ext = file_name[file_name.rfind('.') + 1:].lower()
           if ext in image_ext:
               image_names.append(os.path.join(opt.demo, file_name))
-      image_result_dir = os.path.join(f'../results/{os.path.basename(opt.demo)}')
+      image_result_dir = os.path.join(f'../results/{opt.exp_id}/{os.path.basename(opt.demo)}')
       os.makedirs(image_result_dir, exist_ok=True)
     else:
       image_names = [opt.demo]
@@ -52,8 +52,9 @@ def demo(opt):
     # fourcc = cv2.VideoWriter_fourcc(*'XVID')
     # fourcc = cv2.VideoWriter_fourcc(*'H264')
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter('../results/{}.mp4'.format(
-      opt.exp_id + '_' + out_name), fourcc, opt.save_framerate, (
+    os.makedirs(f'../results/{opt.exp_id}', exist_ok=True)
+    out = cv2.VideoWriter('../results/{}/{}_{}.mp4'.format(
+      opt.exp_id, opt.exp_id, out_name), fourcc, opt.save_framerate, (
         opt.video_w, opt.video_h))
   
   if opt.debug < 5:
