@@ -8,7 +8,7 @@ class CustomDataset(GenericDataset):
   num_categories = 1
   default_resolution = [-1, -1]
   class_name = ['']
-  max_objs = 128
+  max_objs = 8  # change 128 to 8
   cat_ids = {1: 1}
   def __init__(self, opt, split):
     assert (opt.custom_dataset_img_path != '') and \

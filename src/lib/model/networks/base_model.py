@@ -20,7 +20,7 @@ class BaseModel(nn.Module):
         else:
           head_kernel = 3
         self.num_stacks = num_stacks
-        self.heads = heads  # {'hm': 80, 'reg': 2, 'wh': 2, 'tracking': 2}
+        self.heads = heads  # {'hm': 80, 'reg': 2, 'wh': 2, 'tracking': 2, 'ltrb_amodal': 4}
         for head in self.heads:
             classes = self.heads[head]
             head_conv = head_convs[head]  # head_convs: {'hm': [256], 'reg': [256], 'wh': [256], 'tracking': [256]}

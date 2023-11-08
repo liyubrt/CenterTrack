@@ -127,7 +127,7 @@ class opts(object):
     # self.parser.add_argument('--lr_step', type=str, default='60',
     #                          help='drop learning rate by 10.')
     self.parser.add_argument('--lr_scheduler', type=json.loads, default='{"steplr": false, "steplr_step_size": 7, "steplr_gamma": 0.1, \
-                                "cosinelr": false, "cosinelr_T_max": 70, "cosinelr_eta_min": 1e-6}',
+                                "cosinelr": true, "cosinelr_T_max": 70, "cosinelr_eta_min": 1e-6}',
                               help='Specifies the learning rate scheduler and relevant parameters to be used. \
                                 For cosinelr scheduler, it is recommended to set T_max as the total number of epochs.')
     self.parser.add_argument('--weight_decay', type=float, default=1e-5, 

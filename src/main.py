@@ -31,7 +31,7 @@ def get_optimizer(opt, model):
   return optimizer
 
 def get_scheduler(opt, optimizer):
-  assert not (opt.lr_scheduler["steplr"] and opt.lr_scheduler["cosinelr"]), "only one lr scheduler is allowed"
+  assert opt.lr_scheduler["steplr"] + opt.lr_scheduler["cosinelr"] == 1, "only one lr scheduler is allowed"
   if opt.lr_scheduler["steplr"]:
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 
                                                 step_size=opt.lr_scheduler["steplr_step_size"], 

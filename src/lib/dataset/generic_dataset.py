@@ -94,8 +94,8 @@ class GenericDataset(data.Dataset):
       c, s, rot, [opt.input_w, opt.input_h])
     trans_output = get_affine_transform(
       c, s, rot, [opt.output_w, opt.output_h])
-    inp = self._get_input(img, trans_input)
-    ret = {'image': inp}
+    img = self._get_input(img, trans_input)
+    ret = {'image': img}
     gt_det = {'bboxes': [], 'scores': [], 'clses': [], 'cts': []}
 
     pre_cts, track_ids = None, None
@@ -160,6 +160,7 @@ class GenericDataset(data.Dataset):
                         [0, 0, 1, 0]])
     return calib
 
+
   def _load_image_anns(self, img_id, coco, img_dir):
     img_info = coco.loadImgs(ids=[img_id])[0]
     file_name = img_info['file_name']
@@ -174,13 +175,23 @@ class GenericDataset(data.Dataset):
     img_dir = self.img_dir
     img_id = self.images[index]
     img, anns, img_info, img_path = self._load_image_anns(img_id, coco, img_dir)
-
     return img, anns, img_info, img_path
 
+  def _get_input(self, img, trans_input):
+    inp = cv2.warpAffine(img, trans_input, 
+                        (self.opt.input_w, self.opt.input_h),
+                        flags=cv2.INTER_LINEAR)
+    
+    inp = (inp.astype(np.float32) / 255.)
+    if self.split == 'train' and not self.opt.no_color_aug:
+      color_aug(self._data_rng, inp, self._eig_val, self._eig_vec)
+    # inp = (inp - self.mean) / self.std
+    inp = inp.transpose(2, 0, 1)
+    return inp
 
   def _load_pre_data(self, video_id, frame_id, sensor_id=1):
     img_infos = self.video_to_images[video_id]
-    # If training, random sample nearby frames as the "previoud" frame
+    # If training, random sample nearby frames as the "previous" frame
     # If testing, get the exact prevous frame
     if 'train' in self.split:
       img_ids = [(img_info['id'], img_info['frame_id']) \
@@ -208,8 +219,8 @@ class GenericDataset(data.Dataset):
     hm_h, hm_w = self.opt.input_h, self.opt.input_w
     down_ratio = self.opt.down_ratio
     trans = trans_input
-    reutrn_hm = self.opt.pre_hm
-    pre_hm = np.zeros((1, hm_h, hm_w), dtype=np.float32) if reutrn_hm else None
+    return_hm = self.opt.pre_hm
+    pre_hm = np.zeros((1, hm_h, hm_w), dtype=np.float32) if return_hm else None
     pre_cts, track_ids = [], []
     for ann in anns:
       if not ann['category_id'] in self.cat_ids:
@@ -245,10 +256,10 @@ class GenericDataset(data.Dataset):
           pre_cts.append(ct0 / down_ratio)
 
         track_ids.append(ann['track_id'] if 'track_id' in ann else -1)
-        if reutrn_hm:
+        if return_hm:
           draw_umich_gaussian(pre_hm[0], ct_int, radius, k=conf)
 
-        if np.random.random() < self.opt.fp_disturb and reutrn_hm:
+        if np.random.random() < self.opt.fp_disturb and return_hm:
           ct2 = ct0.copy()
           # Hard code heatmap disturb ratio, haven't tried other numbers.
           ct2[0] = ct2[0] + np.random.randn() * 0.05 * w
@@ -316,19 +327,6 @@ class GenericDataset(data.Dataset):
         anns[k]['velocity'] = [-10000, -10000, -10000]
 
     return anns
-
-
-  def _get_input(self, img, trans_input):
-    inp = cv2.warpAffine(img, trans_input, 
-                        (self.opt.input_w, self.opt.input_h),
-                        flags=cv2.INTER_LINEAR)
-    
-    inp = (inp.astype(np.float32) / 255.)
-    if self.split == 'train' and not self.opt.no_color_aug:
-      color_aug(self._data_rng, inp, self._eig_val, self._eig_vec)
-    inp = (inp - self.mean) / self.std
-    inp = inp.transpose(2, 0, 1)
-    return inp
 
 
   def _init_ret(self, ret, gt_det):
