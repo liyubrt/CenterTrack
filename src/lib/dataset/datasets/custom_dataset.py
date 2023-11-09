@@ -30,7 +30,7 @@ class CustomDataset(GenericDataset):
     super().__init__(opt, split, ann_path, img_dir)
 
     self.num_samples = len(self.images)
-    print('Loaded Custom dataset {} samples'.format(self.num_samples))
+    opt.logger.write('Loaded Custom dataset {} samples'.format(self.num_samples))
   
   def __len__(self):
     return self.num_samples

@@ -10,7 +10,7 @@ import cv2
 import json
 import copy
 import numpy as np
-from opts import opts
+from opts import Opts
 from detector import Detector
 
 
@@ -27,7 +27,7 @@ def demo(opt):
     opt.demo.rsplit('.', 1)[1].lower() in video_ext:
     is_video = True
     # demo on video stream
-    print(opt.demo, os.path.isfile(opt.demo))
+    opt.logger.write(f'testing on {opt.demo}')
     cam = cv2.VideoCapture(0 if opt.demo == 'webcam' else opt.demo)
   else:
     is_video = False
@@ -47,15 +47,12 @@ def demo(opt):
   # Initialize output video
   out = None
   out_name = os.path.basename(opt.demo).rsplit('.', 1)[0] if os.path.isfile(opt.demo) else os.path.basename(opt.demo)
-  print('out_name', out_name)
   if opt.save_video:
-    # fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    # fourcc = cv2.VideoWriter_fourcc(*'H264')
+    save_video_name = '../results/{}/{}_{}.mp4'.format(opt.exp_id, opt.run_id, out_name)
+    os.makedirs(os.path.dirname(save_video_name), exist_ok=True)
+    opt.logger.write(f'saving video to {save_video_name}')
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    os.makedirs(f'../results/{opt.exp_id}', exist_ok=True)
-    out = cv2.VideoWriter('../results/{}/{}_{}.mp4'.format(
-      opt.exp_id, opt.exp_id, out_name), fourcc, opt.save_framerate, (
-        opt.video_w, opt.video_h))
+    out = cv2.VideoWriter(save_video_name, fourcc, opt.save_framerate, (opt.video_w, opt.video_h))
   
   if opt.debug < 5:
     detector.pause = False
@@ -91,7 +88,7 @@ def demo(opt):
     time_str = 'frame {} |'.format(cnt)
     for stat in time_stats:
       time_str = time_str + '{} {:.3f}s |'.format(stat, ret[stat])
-    print(time_str)
+    opt.logger.write(time_str)
 
     # results[cnt] is a list of dicts:
     #  [{'bbox': [x1, y1, x2, y2], 'tracking_id': id, 'category_id': c, ...}]
@@ -110,14 +107,17 @@ def demo(opt):
     #   return 
   
   # save_and_exit(opt, out, results, out_name)
+  
+  opt.logger.write()
+  opt.logger.close()
 
 
 def save_and_exit(opt, out=None, results=None, out_name=''):
   if opt.save_results and (results is not None):
-    save_dir =  '../results/{}_results.json'.format(opt.exp_id + '_' + out_name)
-    print('saving results to', save_dir)
+    save_results_name =  '../results/{}/{}_{}.json'.format(opt.exp_id, opt.run_id, out_name)
+    opt.logger.write(f'saving results to {save_results_name}')
     json.dump(_to_list(copy.deepcopy(results)), 
-              open(save_dir, 'w'))
+              open(save_results_name, 'w'))
   cv2.destroyAllWindows()
   if opt.save_video and out is not None:
     out.release()
@@ -132,5 +132,5 @@ def _to_list(results):
   return results
 
 if __name__ == '__main__':
-  opt = opts().init()
+  opt = Opts().init()
   demo(opt)

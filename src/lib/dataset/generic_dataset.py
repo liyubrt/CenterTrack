@@ -58,7 +58,7 @@ class GenericDataset(data.Dataset):
       self._data_rng = np.random.RandomState(123)
     
     if ann_path is not None and img_dir is not None:
-      print('==> initializing {} data from {}, \n images from {} ...'.format(
+      opt.logger.write('==> initializing {} data from {}, \n images from {} ...'.format(
         split, ann_path, img_dir))
       self.coco = coco.COCO(ann_path)
       self.images = self.coco.getImgIds()
@@ -66,7 +66,7 @@ class GenericDataset(data.Dataset):
       if opt.tracking:
         if not ('videos' in self.coco.dataset):
           self.fake_video_data()
-        print('Creating video index!')
+        opt.logger.write('Creating video index!')
         self.video_to_images = defaultdict(list)
         for image in self.coco.dataset['images']:
           self.video_to_images[image['video_id']].append(image)

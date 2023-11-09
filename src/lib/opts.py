@@ -7,8 +7,9 @@ import os
 import json
 import sys
 
+from logger import Logger
 
-class opts(object):
+class Opts(object):
   def __init__(self):
     self.parser = argparse.ArgumentParser()
     # basic experiment setting
@@ -21,6 +22,7 @@ class opts(object):
     self.parser.add_argument('--test_dataset', default='',
                              help='coco | kitti | coco_hp | pascal')
     self.parser.add_argument('--exp_id', default='default')
+    self.parser.add_argument('--run_id', default='default')
     self.parser.add_argument('--test', action='store_true')
     self.parser.add_argument('--debug', type=int, default=0,
                              help='level of visualization.'
@@ -278,7 +280,19 @@ class opts(object):
       opt = self.parser.parse_args()
     else:
       opt = self.parser.parse_args(args)
-  
+
+    # log dirs
+    opt.root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    opt.data_dir = os.path.join(opt.root_dir, 'data')
+    opt.exp_dir = os.path.join(opt.root_dir, 'exp', opt.task)
+    opt.save_dir = os.path.join(opt.exp_dir, opt.exp_id, opt.run_id)
+    opt.debug_dir = os.path.join(opt.save_dir, 'debug')
+    opt.log_file = os.path.join(opt.save_dir, 'opt.txt')
+    opt.logger = Logger(opt)
+    
+    if opt.resume and opt.load_model == '':
+      opt.load_model = os.path.join(opt.save_dir, 'model_last.pth')
+
     if opt.test_dataset == '':
       opt.test_dataset = opt.dataset
     
@@ -297,18 +311,19 @@ class opts(object):
     opt.num_workers = max(opt.num_workers, 2 * len(opt.gpus))
     opt.pre_img = False
     if 'tracking' in opt.task:
-      print('Running tracking')
+      opt.logger.write('Running tracking')
       opt.tracking = True
       opt.out_thresh = max(opt.track_thresh, opt.out_thresh)
       opt.pre_thresh = max(opt.track_thresh, opt.pre_thresh)
       opt.new_thresh = max(opt.track_thresh, opt.new_thresh)
       opt.pre_img = not opt.no_pre_img
-      print('Using tracking threshold for out threshold!', opt.track_thresh)
+      opt.logger.write(f'Using tracking threshold for out threshold! {opt.track_thresh}')
       if 'ddd' in opt.task:
         opt.show_track_color = True
 
-    opt.fix_res = not opt.keep_res
-    print('Fix size testing.' if opt.fix_res else 'Keep resolution testing.')
+    if opt.test:
+      opt.fix_res = not opt.keep_res
+      opt.logger.write('Fix size testing.' if opt.fix_res else 'Keep resolution testing.')
 
     if opt.head_conv == -1: # init default head_conv
       opt.head_conv = 256 if 'dla' in opt.arch else 64
@@ -325,7 +340,7 @@ class opts(object):
       if i < rest_batch_size % (len(opt.gpus) - 1):
         slave_chunk_size += 1
       opt.chunk_sizes.append(slave_chunk_size)
-    print('training chunk_sizes:', opt.chunk_sizes)
+    opt.logger.write(f"training chunk_sizes: {opt.chunk_sizes}")
 
     if opt.debug > 0:
       opt.num_workers = 0
@@ -333,15 +348,6 @@ class opts(object):
       opt.gpus = [opt.gpus[0]]
       opt.master_batch_size = -1
 
-    # log dirs
-    opt.root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-    opt.data_dir = os.path.join(opt.root_dir, 'data')
-    opt.exp_dir = os.path.join(opt.root_dir, 'exp', opt.task)
-    opt.save_dir = os.path.join(opt.exp_dir, opt.exp_id)
-    opt.debug_dir = os.path.join(opt.save_dir, 'debug')
-    
-    if opt.resume and opt.load_model == '':
-      opt.load_model = os.path.join(opt.save_dir, 'model_last.pth')
     return opt
 
 
@@ -399,10 +405,10 @@ class opts(object):
     opt.head_convs = {head: [opt.head_conv \
       for i in range(opt.num_head_conv if head != 'reg' else 1)] for head in opt.heads}
     
-    print('input h w:', opt.input_h, opt.input_w)
-    print('heads', opt.heads)
-    print('weights', opt.weights)
-    print('head convs', opt.head_convs)
+    opt.logger.write(f'input h w: {opt.input_h}, {opt.input_w}')
+    opt.logger.write(f'heads {opt.heads}')
+    opt.logger.write(f'weights {opt.weights}')
+    opt.logger.write(f'head convs {opt.head_convs}')
 
     return opt
 

@@ -36,12 +36,12 @@ def load_model(model, model_path, opt, optimizer=None):
     # load tracking weights
     model_path_tracking = os.path.join(opt.root_dir, 'models/coco_tracking.pth')
     checkpoint = torch.load(model_path_tracking, map_location=lambda storage, loc: storage)
-    print('loaded {}, epoch {}'.format(model_path_tracking, checkpoint['epoch']))
+    opt.logger.write('loaded {}, epoch {}'.format(model_path_tracking, checkpoint['epoch']))
     state_dict_ = checkpoint['state_dict']
     # load BRT weights
     if 'brt' in opt.arch:
       checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
-      print('loaded {}'.format(model_path))
+      opt.logger.write('loaded {}'.format(model_path))
       state_dict2 = checkpoint['state_dict']
       state_dict2 = {'base.'+k:v for k,v in state_dict2.items()}
       state_dict_.update(state_dict2)
@@ -50,16 +50,16 @@ def load_model(model, model_path, opt, optimizer=None):
         seg_model_weights = list(state_dict2.keys())
         df = pd.DataFrame(data={'weight_name': seg_model_weights})
         df.to_csv(seg_model_weights_file, index=False)
-        print(f'saved seg model weight names to {seg_model_weights_file}')
+        opt.logger.write(f'saved seg model weight names to {seg_model_weights_file}')
   else:
     checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
-    print('loaded {}, epoch {}'.format(model_path, checkpoint['epoch']))
+    opt.logger.write('loaded {}, epoch {}'.format(model_path, checkpoint['epoch']))
     state_dict_ = checkpoint['state_dict']
     if opt.freeze_encoder:
       seg_model_weights_file = os.path.join(opt.root_dir, 'models/brt_lite12_weights.csv')
       assert os.path.isfile(seg_model_weights_file), f"{seg_model_weights_file} doesn't exist"
       seg_model_weights = pd.read_csv(seg_model_weights_file).weight_name.to_list()
-      print(f'read seg model weight names from {seg_model_weights_file}')
+      opt.logger.write(f'read seg model weight names from {seg_model_weights_file}')
   
   start_epoch = 0
   state_dict = {}
@@ -117,7 +117,7 @@ def load_model(model, model_path, opt, optimizer=None):
       if (state_dict[k].shape != model_state_dict[k].shape) or \
         (opt.reset_hm and k.startswith('hm') and (state_dict[k].shape[0] in [80, 1])):
         if opt.reuse_hm:
-          print('Reusing parameter {}, required shape{}, '\
+          opt.logger.write('Reusing parameter {}, required shape{}, '\
                 'loaded shape{}.'.format(
             k, model_state_dict[k].shape, state_dict[k].shape))
           if state_dict[k].shape[0] < state_dict[k].shape[0]:
@@ -126,21 +126,21 @@ def load_model(model, model_path, opt, optimizer=None):
             model_state_dict[k] = state_dict[k][:model_state_dict[k].shape[0]]
           state_dict[k] = model_state_dict[k]
         else:
-          print('Skip loading parameter {}, required shape{}, '\
+          opt.logger.write('Skip loading parameter {}, required shape{}, '\
                 'loaded shape{}.'.format(
             k, model_state_dict[k].shape, state_dict[k].shape))
           state_dict[k] = model_state_dict[k]
         unmatched_weights.append(k)
     else:
-      print('Drop parameter {}.'.format(k))
+      opt.logger.write('Drop parameter {}.'.format(k))
   for k in model_state_dict:
     if not (k in state_dict):
-      print('No param {}.'.format(k))
+      opt.logger.write('No param {}.'.format(k))
       state_dict[k] = model_state_dict[k]
       unmatched_weights.append(k)
   missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
   if len(missing_keys) > 0 or len(unexpected_keys) > 0:
-    print('Num missing keys: {} and Num unexpected keys: {} while loading model'
+    opt.logger.write('Num missing keys: {} and Num unexpected keys: {} while loading model'
                     .format(len(missing_keys), len(unexpected_keys)))
 
   # warmup: disable gradient calculation for matched weights
@@ -165,9 +165,9 @@ def load_model(model, model_path, opt, optimizer=None):
   #         start_lr *= 0.1
   #     for param_group in optimizer.param_groups:
   #       param_group['lr'] = start_lr
-  #     print('Resumed optimizer with start lr', start_lr)
+  #     opt.logger.write(f'Resumed optimizer with start lr {start_lr}')
   #   else:
-  #     print('No optimizer parameters in checkpoint.')
+  #     opt.logger.write('No optimizer parameters in checkpoint.')
   # if optimizer is not None:
   #   return model, optimizer, start_epoch
   # else:

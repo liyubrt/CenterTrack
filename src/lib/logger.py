@@ -18,12 +18,8 @@ except:
 class Logger(object):
   def __init__(self, opt):
     """Create a summary writer logging to log_dir."""
-    if not os.path.exists(opt.save_dir):
-      os.makedirs(opt.save_dir)
-    if not os.path.exists(opt.debug_dir):
-      os.makedirs(opt.debug_dir)
-   
-    time_str = time.strftime('%Y-%m-%d-%H-%M')
+    os.makedirs(opt.save_dir, exist_ok=True)
+    os.makedirs(opt.debug_dir, exist_ok=True)
 
     args = dict((name, getattr(opt, name)) for name in dir(opt)
                 if not name.startswith('_'))
@@ -39,32 +35,19 @@ class Logger(object):
       opt_file.write('\n==> Opt:\n')
       for k, v in sorted(args.items()):
         opt_file.write('  %s: %s\n' % (str(k), str(v)))
-          
-    log_dir = opt.save_dir + '/logs_{}'.format(time_str)
+
+    log_dir = opt.save_dir
     if USE_TENSORBOARD:
       self.writer = tensorboardX.SummaryWriter(log_dir=log_dir)
-    else:
-      if not os.path.exists(os.path.dirname(log_dir)):
-        os.mkdir(os.path.dirname(log_dir))
-      if not os.path.exists(log_dir):
-        os.mkdir(log_dir)
-    self.log = open(log_dir + '/log.txt', 'w')
-    try:
-      os.system('cp {}/opt.txt {}/'.format(opt.save_dir, log_dir))
-    except:
-      pass
-    self.start_line = True
+    self.log = open(log_dir + f'/{"train" if not opt.test else "test"}_log.txt', 'a')
 
-  def write(self, txt):
-    if self.start_line:
+  def write(self, txt, prefix_time=False):
+    if prefix_time:
       time_str = time.strftime('%Y-%m-%d-%H-%M')
-      self.log.write('{}: {}'.format(time_str, txt))
+      self.log.write('{}: {}\n'.format(time_str, txt))
     else:
-      self.log.write(txt)  
-    self.start_line = False
-    if '\n' in txt:
-      self.start_line = True
-      self.log.flush()
+      self.log.write(txt+'\n')
+    self.log.flush()
   
   def close(self):
     self.log.close()
