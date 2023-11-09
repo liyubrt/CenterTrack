@@ -39,17 +39,18 @@ def load_model(model, model_path, opt, optimizer=None):
     print('loaded {}, epoch {}'.format(model_path_tracking, checkpoint['epoch']))
     state_dict_ = checkpoint['state_dict']
     # load BRT weights
-    checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
-    print('loaded {}'.format(model_path))
-    state_dict2 = checkpoint['state_dict']
-    state_dict2 = {'base.'+k:v for k,v in state_dict2.items()}
-    state_dict_.update(state_dict2)
-    if opt.freeze_encoder:
-      seg_model_weights_file = os.path.join(opt.root_dir, 'models/brt_lite12_weights.csv')
-      seg_model_weights = list(state_dict2.keys())
-      df = pd.DataFrame(data={'weight_name': seg_model_weights})
-      df.to_csv(seg_model_weights_file, index=False)
-      print(f'saved seg model weight names to {seg_model_weights_file}')
+    if 'brt' in opt.arch:
+      checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
+      print('loaded {}'.format(model_path))
+      state_dict2 = checkpoint['state_dict']
+      state_dict2 = {'base.'+k:v for k,v in state_dict2.items()}
+      state_dict_.update(state_dict2)
+      if opt.freeze_encoder:
+        seg_model_weights_file = os.path.join(opt.root_dir, 'models/brt_lite12_weights.csv')
+        seg_model_weights = list(state_dict2.keys())
+        df = pd.DataFrame(data={'weight_name': seg_model_weights})
+        df.to_csv(seg_model_weights_file, index=False)
+        print(f'saved seg model weight names to {seg_model_weights_file}')
   else:
     checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
     print('loaded {}, epoch {}'.format(model_path, checkpoint['epoch']))
