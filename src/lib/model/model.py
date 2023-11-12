@@ -114,29 +114,21 @@ def load_model(model, model_path, opt, optimizer=None):
   unmatched_weights = []
   for k in state_dict:
     if k in model_state_dict:
-      if (state_dict[k].shape != model_state_dict[k].shape) or \
-        (opt.reset_hm and k.startswith('hm') and (state_dict[k].shape[0] in [80, 1])):
-        if opt.reuse_hm:
-          opt.logger.write('Reusing parameter {}, required shape{}, '\
-                'loaded shape{}.'.format(
-            k, model_state_dict[k].shape, state_dict[k].shape))
-          if state_dict[k].shape[0] < state_dict[k].shape[0]:
-            model_state_dict[k][:state_dict[k].shape[0]] = state_dict[k]
-          else:
-            model_state_dict[k] = state_dict[k][:model_state_dict[k].shape[0]]
-          state_dict[k] = model_state_dict[k]
-        else:
-          opt.logger.write('Skip loading parameter {}, required shape{}, '\
-                'loaded shape{}.'.format(
-            k, model_state_dict[k].shape, state_dict[k].shape))
-          state_dict[k] = model_state_dict[k]
+      if opt.reuse_hm and k.startswith('hm') and (state_dict[k].shape[0] in [80, 1]):
+        opt.logger.write('Reusing parameter {}, required shape{}, '\
+              'loaded shape{}.'.format(
+          k, model_state_dict[k].shape, state_dict[k].shape))
+        state_dict[k] = state_dict[k][:model_state_dict[k].shape[0]]
+      elif state_dict[k].shape != model_state_dict[k].shape:
+        opt.logger.write('Skip loading parameter {}, required shape{}, '\
+              'loaded shape{}.'.format(
+          k, model_state_dict[k].shape, state_dict[k].shape))
         unmatched_weights.append(k)
     else:
       opt.logger.write('Drop parameter {}.'.format(k))
   for k in model_state_dict:
     if not (k in state_dict):
       opt.logger.write('No param {}.'.format(k))
-      state_dict[k] = model_state_dict[k]
       unmatched_weights.append(k)
   missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
   if len(missing_keys) > 0 or len(unexpected_keys) > 0:

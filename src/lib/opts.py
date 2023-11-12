@@ -158,7 +158,6 @@ class Opts(object):
                              help='')          
     self.parser.add_argument('--ltrb_weight', type=float, default=0.1,
                              help='')
-    self.parser.add_argument('--reset_hm', action='store_true')
     self.parser.add_argument('--reuse_hm', action='store_true')
     self.parser.add_argument('--use_kpt_center', action='store_true')
     self.parser.add_argument('--add_05', action='store_true')
