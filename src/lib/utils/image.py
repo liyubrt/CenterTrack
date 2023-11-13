@@ -9,9 +9,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import Callable, Dict, List, Tuple
+
 import numpy as np
 import cv2
 import random
+
+import torch
+from PIL import Image
+from torch import Tensor
+from torchvision import transforms
+from torchvision.transforms import functional
+
+from utils import bbr_table
+
 
 def flip(img):
   return img[:, :, ::-1].copy()  
@@ -241,3 +252,90 @@ def color_aug(data_rng, image, eig_val, eig_vec):
     for f in functions:
         f(data_rng, image, gs, gs_mean, 0.4)
     lighting_(data_rng, image, 0.1, eig_val, eig_vec)
+
+
+class AdjustGamma(torch.nn.Module):
+    """Randomly jitter the gamma of an image"""
+
+    def __init__(
+        self,
+        gamma_low: float = 0.3,
+        gamma_high: float = 0.9,
+        gain_low: float = 0.5,
+        gain_high: float = 1.2,
+    ) -> None:
+        self.gamma_low = gamma_low
+        self.gamma_high = gamma_high
+        self.gain_low = gain_low
+        self.gain_high = gain_high
+
+        if gamma_low < 0.3 or gamma_high > 0.9 or gain_low < 0.5 or gain_high > 1.2:
+            warning_string = "AdjustGamma:\n"
+            warning_string += (
+                f"Recommended ranges for params: 0.3 < gamma_low, gamma_high < 0.9"
+                f"and 0.5 < gain_low, gain_high < 1.2\n"
+            )
+            warning_string += (
+                f"Provided params: gamma_low: {gamma_low}, gamma_high: {gamma_high}"
+                f",gain_low: {gain_low}, gain_high: {gain_high}"
+            )
+
+    def forward(self, image: Tensor) -> Tensor:
+        gamma = np.random.uniform(low=max(0, self.gamma_low), high=min(1, self.gamma_high))
+        gain = np.random.uniform(low=max(0.5, self.gain_low), high=min(1.5, self.gain_high))
+        image_gamma = functional.adjust_gamma(image, gamma=gamma, gain=gain)
+        return image_gamma
+
+
+class AdjustColorTemperature(torch.nn.Module):
+    """Randomly jitter the color temperature of an image"""
+
+    def __init__(self, temp_low: int = 2001, temp_high: int = 15000) -> None:
+        self.temp_low = temp_low
+        self.temp_high = temp_high
+
+        if temp_low < 2001 or temp_high > 15000:
+            warning_string = "AdjustColorTemperature\n"
+            warning_string += f"Recommended ranges for params: 2001 < temp_low, temp_high < 15000\n"
+            warning_string += f"Provided params: temp_low: {temp_low}, temp_high: {temp_high}"
+
+    def forward(self, image: Tensor) -> Tensor:
+        temperature = np.random.randint(
+            low=max(bbr_table.min_temp, self.temp_low),
+            high=min(bbr_table.max_temp, self.temp_high),
+        )
+        rgb_temp = bbr_table.temp2rgb(temperature, exact=False).astype(np.double) / 255.0
+        r, g, b = image.split()
+        r = r.point(lambda i: i * rgb_temp[0])
+        g = g.point(lambda i: i * rgb_temp[1])
+        b = b.point(lambda i: i * rgb_temp[2])
+        image_temp = Image.merge("RGB", (r, g, b))
+        return image_temp
+
+
+def TwoVarCompose(function_list: List[torch.nn.Module]) -> Callable:
+    def compose_func(img: Tensor) -> Tensor:
+        for f in function_list:
+            img = f(img)
+        return img
+
+    return compose_func
+
+def load_image_augmentations(args: dict) -> Callable:
+    """
+    Obtain a object representing the image
+    augmentations requested by args.
+    """
+    transformations: List[torch.nn.Module] = []
+    if args["color_jitter"]["use"]:
+        del args["color_jitter"]["use"]
+        transformations.append(transforms.ColorJitter(**args["color_jitter"]))
+    if args["adj_img_gamma"]["use"]:
+        del args["adj_img_gamma"]["use"]
+        transformations.append(AdjustGamma(**args["adj_img_gamma"]))
+    if args["adj_color_temp"]["use"]:
+        del args["adj_color_temp"]["use"]
+        transformations.append(AdjustColorTemperature(**args["adj_color_temp"]))
+    # transforms.Compose seems to break for the 2 variable case
+    transforms_composed = TwoVarCompose(transformations)
+    return transforms_composed

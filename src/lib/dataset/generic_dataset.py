@@ -12,8 +12,9 @@ from collections import defaultdict
 import pycocotools.coco as coco
 import torch
 import torch.utils.data as data
+from torchvision.transforms.functional import to_tensor
 
-from utils.image import flip, color_aug
+from utils.image import flip, color_aug, load_image_augmentations
 from utils.image import get_affine_transform, affine_transform
 from utils.image import gaussian_radius, draw_umich_gaussian
 import copy
@@ -47,6 +48,7 @@ class GenericDataset(data.Dataset):
         [-0.5832747, 0.00994535, -0.81221408],
         [-0.56089297, 0.71832671, 0.41158938]
     ], dtype=np.float32)
+  # _color_jitter_args = {"color_jitter": {"use": True, "brightness":0.1,"contrast":0,"saturation":0.2,"hue":0.3}, "adj_img_gamma": {"use": False}, "adj_color_temp": {"use": False}}
   ignore_val = 1
   nuscenes_att_range = {0: [0, 1], 1: [0, 1], 2: [2, 3, 4], 3: [2, 3, 4], 
     4: [2, 3, 4], 5: [5, 6, 7], 6: [5, 6, 7], 7: [5, 6, 7]}
@@ -56,6 +58,7 @@ class GenericDataset(data.Dataset):
       self.split = split
       self.opt = opt
       self._data_rng = np.random.RandomState(123)
+      # self.color_jitter = load_image_augmentations(self._color_jitter_args)
     
     if ann_path is not None and img_dir is not None:
       opt.logger.write('==> initializing {} data from {}, \n images from {} ...'.format(
@@ -185,6 +188,10 @@ class GenericDataset(data.Dataset):
     inp = (inp.astype(np.float32) / 255.)
     if self.split == 'train' and not self.opt.no_color_aug:
       color_aug(self._data_rng, inp, self._eig_val, self._eig_vec)
+      # # perform brt-style color jitter
+      # image_tensor = to_tensor(inp)
+      # image_tensor = self.color_jitter(image_tensor)
+      # inp = image_tensor.numpy()  # no need to do transpose
     # inp = (inp - self.mean) / self.std
     inp = inp.transpose(2, 0, 1)
     return inp
